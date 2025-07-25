@@ -7,8 +7,13 @@ logging.getLogger("pymongo").setLevel(logging.WARNING)
 logging.getLogger("motor").setLevel(logging.WARNING)
 logging.getLogger("watchfiles").setLevel(logging.WARNING)
 
-# Tạo client bất đồng bộ từ biến môi trường
-client = AsyncIOMotorClient(MONGODB_URI, server_api=ServerApi('1'))
+# Tạo client bất đồng bộ với cấu hình SSL
+client = AsyncIOMotorClient(
+    MONGODB_URI,
+    server_api=ServerApi('1'),
+    ssl=True,  # Bắt buộc SSL
+    ssl_cert_reqs='CERT_NONE'  # Tạm thời bỏ qua kiểm tra chứng chỉ (dùng để debug)
+)
 
 # Kết nối đến database
 db = client.get_database(MONGODB_DB_NAME)
