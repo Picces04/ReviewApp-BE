@@ -9,20 +9,21 @@ passlib>=1.7.4
 bcrypt>=4.3.0
 PyJWT>=2.10.1
 
-# MongoDB for database (if you're using motor/pymongo)
+# MongoDB for database
 pymongo>=4.13.2
 motor>=3.7.1
 dnspython>=2.7.0
 
-# Machine learning and image processing (if needed)
-torch==2.7.0
+# Machine learning and image processing
+tensorflow-cpu>=2.17.0  # Sử dụng tensorflow-cpu để tránh vấn đề GPU
+torch>=2.7.0
 torchvision>=0.22.0
 opencv-python>=4.9.0.80
-numpy>=1.26.0  # Updated to a version compatible with Python 3.11+
+numpy>=1.26.0
 scipy>=1.15.3
 pandas>=2.2.3
 
-# Cloudinary for image storage (if used)
+# Cloudinary for image storage
 cloudinary>=1.44.1
 
 # HTTP and networking
@@ -30,12 +31,15 @@ aiohttp>=3.12.2
 httpx>=0.28.1
 requests>=2.32.3
 
-# Build tools to avoid setuptools errors
+# Caching
+cachetools>=6.0.0  # Thêm cachetools để khắc phục lỗi
+
+# Build tools
 pip>=24.2
 setuptools>=68.0.0
 wheel>=0.45.0
 
-# Other utilities (if needed)
+# Other utilities
 qrcode>=8.2
 PyYAML>=6.0.2
 tqdm>=4.67.1
