@@ -15,7 +15,7 @@ motor>=3.7.1
 dnspython>=2.7.0
 
 # Machine learning and image processing
-tensorflow-cpu>=2.17.0  # Sử dụng tensorflow-cpu để tránh vấn đề GPU
+
 torch>=2.7.0
 torchvision>=0.22.0
 opencv-python>=4.9.0.80
