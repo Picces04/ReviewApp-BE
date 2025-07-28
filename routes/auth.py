@@ -81,8 +81,8 @@ async def login(data: LoginModel, response: Response):
             "token",
             token,
             httponly=True,
-            secure=is_production,
-            samesite="lax",
+            secure=True,       # luôn bật nếu dùng HTTPS
+            samesite="none",   # BẮT BUỘC khi FE/BE khác domain
             max_age=86400
         )
         print(f"Debug: Đã đặt cookie cho người dùng {u['email']} với token {token[:10]}...")
