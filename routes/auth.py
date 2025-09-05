@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Response, Depends, Cookie, status
+from fastapi.middleware.cors import CORSMiddleware
 from models.schemas import LoginModel, RegisterModel
 from database import user
 from auth import verify_password, get_password_hash, create_access_token
@@ -6,8 +7,19 @@ from jose import jwt, JWTError
 from bson import ObjectId
 from config import SECRET_KEY, ALGORITHM
 import os
+from datetime import datetime, timedelta
+from starlette.requests import Request
 
 auth_router = APIRouter()
+
+# Cấu hình CORS (nếu cần)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["https://your-frontend-domain.com"],  # Thay bằng domain frontend
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 def get_current_user_from_cookie(token: str = Cookie(None)):
     if not token:
@@ -63,6 +75,7 @@ async def register(data: RegisterModel):
 @auth_router.post("/login")
 async def login(data: LoginModel, response: Response):
     try:
+        is_production = os.getenv("ENVIRONMENT", "development") == "production"
         u = await user.find_one({"email": data.email})
         if not u or not verify_password(data.password, u["password"]):
             print(f"Debug: Đăng nhập thất bại cho email {data.email}")
@@ -76,14 +89,13 @@ async def login(data: LoginModel, response: Response):
             "username": u.get("username", ""),
             "zone": u.get("zone", "user")
         })
-        is_production = os.getenv("ENVIRONMENT", "development") == "production"
         response.set_cookie(
             "token",
             token,
             httponly=True,
-            secure=True,       # luôn bật nếu dùng HTTPS
-            samesite="none",   # BẮT BUỘC khi FE/BE khác domain
-            max_age=86400
+            secure=is_production,  # Chỉ bật secure=True nếu production
+            samesite="lax" if not is_production else "none",  # Lax cho dev, None cho production
+            max_age=86400  # 24 giờ
         )
         print(f"Debug: Đã đặt cookie cho người dùng {u['email']} với token {token[:10]}...")
         return {"message": "Đăng nhập thành công", "token_type": "bearer"}
@@ -96,16 +108,32 @@ async def login(data: LoginModel, response: Response):
 
 # Đăng xuất
 @auth_router.post("/logout")
-async def logout(response: Response):
+async def logout(request: Request, response: Response):
     try:
         is_production = os.getenv("ENVIRONMENT", "development") == "production"
+        cookies = request.cookies
+        print(f"Debug: Cookies trước khi xóa - {cookies}")
+
+        # Xóa cookie với các biến thể thuộc tính
         response.delete_cookie(
             "token",
             httponly=True,
             secure=is_production,
-            samesite="lax"
+            samesite="lax",
+            path="/",
+            expires=datetime.utcnow() - timedelta(days=1)
         )
-        print("Debug: Đã xóa cookie token")
+        response.delete_cookie(
+            "token",
+            httponly=True,
+            secure=True,  # Khớp với trường hợp production
+            samesite="none",
+            path="/",
+            expires=datetime.utcnow() - timedelta(days=1)
+        )
+
+        print(f"Debug: Cookies sau khi xóa - {request.cookies}")
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         return {"message": "Đăng xuất thành công"}
     except Exception as e:
         print(f"Debug: Lỗi khi đăng xuất - {str(e)}")
