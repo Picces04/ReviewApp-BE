@@ -111,10 +111,9 @@ async def logout(request: Request, response: Response):
         response.delete_cookie(
             "token",
             httponly=True,
-            secure=True,  # Khớp với login
+            secure=True,
             samesite="none",
-            path="/",
-            expires=datetime.utcnow() - timedelta(days=1)
+            path="/"
         )
         # Fallback với secure=is_production nếu cần
         response.delete_cookie(
@@ -122,8 +121,7 @@ async def logout(request: Request, response: Response):
             httponly=True,
             secure=is_production,
             samesite="none",
-            path="/",
-            expires=datetime.utcnow() - timedelta(days=1)
+            path="/"
         )
 
         print(f"Debug: Cookies sau khi xóa - {request.cookies}")
