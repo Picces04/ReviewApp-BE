@@ -12,15 +12,6 @@ from starlette.requests import Request
 
 auth_router = APIRouter()
 
-# Cấu hình CORS (nếu cần)
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["https://your-frontend-domain.com"],  # Thay bằng domain frontend
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
 def get_current_user_from_cookie(token: str = Cookie(None)):
     if not token:
         print("Debug: Thiếu token trong cookie")
@@ -89,13 +80,15 @@ async def login(data: LoginModel, response: Response):
             "username": u.get("username", ""),
             "zone": u.get("zone", "user")
         })
+        # Sử dụng SameSite=none với secure=True
         response.set_cookie(
             "token",
             token,
             httponly=True,
-            secure=is_production,  # Chỉ bật secure=True nếu production
-            samesite="lax" if not is_production else "none",  # Lax cho dev, None cho production
-            max_age=86400  # 24 giờ
+            secure=True,  # Yêu cầu HTTPS
+            samesite="none",  # Sử dụng none cho cả dev và production
+            max_age=86400,  # 24 giờ
+            path="/"  # Đảm bảo path khớp
         )
         print(f"Debug: Đã đặt cookie cho người dùng {u['email']} với token {token[:10]}...")
         return {"message": "Đăng nhập thành công", "token_type": "bearer"}
@@ -114,19 +107,20 @@ async def logout(request: Request, response: Response):
         cookies = request.cookies
         print(f"Debug: Cookies trước khi xóa - {cookies}")
 
-        # Xóa cookie với các biến thể thuộc tính
+        # Xóa cookie với SameSite=none và secure=True
+        response.delete_cookie(
+            "token",
+            httponly=True,
+            secure=True,  # Khớp với login
+            samesite="none",
+            path="/",
+            expires=datetime.utcnow() - timedelta(days=1)
+        )
+        # Fallback với secure=is_production nếu cần
         response.delete_cookie(
             "token",
             httponly=True,
             secure=is_production,
-            samesite="lax",
-            path="/",
-            expires=datetime.utcnow() - timedelta(days=1)
-        )
-        response.delete_cookie(
-            "token",
-            httponly=True,
-            secure=True,  # Khớp với trường hợp production
             samesite="none",
             path="/",
             expires=datetime.utcnow() - timedelta(days=1)
@@ -134,6 +128,7 @@ async def logout(request: Request, response: Response):
 
         print(f"Debug: Cookies sau khi xóa - {request.cookies}")
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
         return {"message": "Đăng xuất thành công"}
     except Exception as e:
         print(f"Debug: Lỗi khi đăng xuất - {str(e)}")
@@ -149,15 +144,15 @@ async def get_me(user_id: str = Depends(get_current_user_from_cookie)):
         if not ObjectId.is_valid(user_id):
             print(f"Debug: user_id không hợp lệ - {user_id}")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Mã người dùng không hợp lệ"
             )
         user_data = await user.find_one({"_id": ObjectId(user_id)})
         if not user_data:
             print(f"Debug: Không tìm thấy người dùng với user_id {user_id}")
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Không tìm thấy người dùng"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Không tìm thấy người dùng hoặc token không hợp lệ"
             )
         print(f"Debug: Lấy dữ liệu người dùng thành công cho user_id {user_id}")
         return {
